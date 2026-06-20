@@ -31,7 +31,10 @@
   .progwrap{flex:1 1 160px;min-width:140px;height:8px;background:#e3e8ef;border-radius:6px;overflow:hidden}
   .progbar{height:100%;width:0;background:var(--found);transition:width .3s}
   #controls{top:74px;left:12px;width:248px;padding:12px 14px;font-size:13px}
-  #controls h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 8px}
+  #controls h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:8px;cursor:pointer}
+  #controls h2 .ccol{margin-left:auto;font-size:14px}
+  #controls.collapsed h2{margin:0}
+  #controls.collapsed > :not(h2){display:none}
   .row{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;user-select:none}
   .row input{accent-color:var(--accent);width:15px;height:15px}
   .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;border:1px solid rgba(0,0,0,.2)}
@@ -98,7 +101,7 @@
   <div class="progwrap"><div class="progbar" id="prog"></div></div>
 </div>
 <div id="controls" class="panel">
-  <h2>Filtres par statut</h2>
+  <h2 id="controls-head">Filtres par statut <span class="ccol" id="c-collapse">▾</span></h2>
   <div id="filters"></div>
   <input id="search" placeholder="Chercher un code (ex : MARS_01)"/>
   <div class="sep"></div>
@@ -342,6 +345,14 @@ document.getElementById('routehead').addEventListener('click',()=>{
   const p=document.getElementById('routepanel');p.classList.toggle('collapsed');
   document.getElementById('r-collapse').textContent=p.classList.contains('collapsed')?'▸':'▾';
 });
+document.getElementById('controls-head').addEventListener('click',()=>{
+  const p=document.getElementById('controls');p.classList.toggle('collapsed');
+  document.getElementById('c-collapse').textContent=p.classList.contains('collapsed')?'▸':'▾';
+});
+if(window.matchMedia('(max-width:640px)').matches){
+  document.getElementById('controls').classList.add('collapsed');
+  document.getElementById('c-collapse').textContent='▸';
+}
 
 map.addLayer(cluster);
 routeLayer.addTo(map);
