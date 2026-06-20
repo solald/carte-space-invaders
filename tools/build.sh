@@ -16,5 +16,6 @@ rm -f og_card.html
 # city_code | titre | région | fichier de sortie | centre lat,lng
 python3 tools/build_city.py MARS "Marseille" "PACA"          carte-space-invaders-marseille.html 43.2895,5.378
 python3 tools/build_city.py PA   "Paris"     "Île-de-France" carte-space-invaders-paris.html     48.8566,2.3522
+python3 tools/build_city.py LDN  "Londres"   "Royaume-Uni"   carte-space-invaders-londres.html   51.5074,-0.1278
 
 echo "OK — cartes régénérées."

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Space Invaders de Londres — carte interactive</title>
+<link rel="icon" type="image/svg+xml" href="invader.svg"/>
+<meta name="theme-color" content="#3358d4"/>
+<meta name="description" content="Carte interactive des Space Invaders de Londres : repère, flashe et construis ton itinéraire."/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="👾 Space Invaders de Londres"/>
+<meta property="og:description" content="Carte interactive : repère, flashe et construis ton itinéraire à plusieurs arrêts."/>
+<meta property="og:image" content="https://solald.github.io/carte-space-invaders/og-image.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://solald.github.io/carte-space-invaders/og-image.png"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<style>
+  :root{--bg:#eef1f5;--panel:#fff;--panel2:#f6f8fb;--txt:#1c2430;--muted:#5d6b7e;--accent:#3358d4;--found:#16a34a;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--txt)}
+  #map{position:absolute;inset:0;background:#eef1f5}
+  .panel{position:absolute;z-index:1000;background:var(--panel);border:1px solid #d8dee7;border-radius:12px;box-shadow:0 6px 22px rgba(20,30,50,.12)}
+  #header{top:12px;left:12px;right:12px;padding:10px 16px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  #header h1{font-size:16px;margin:0;font-weight:650}
+  #header h1 span{color:var(--accent)}
+  .stat{font-size:12px;color:var(--muted)}
+  .stat b{color:var(--txt);font-variant-numeric:tabular-nums}
+  .stat.found b{color:var(--found)}
+  .progwrap{flex:1 1 160px;min-width:140px;height:8px;background:#e3e8ef;border-radius:6px;overflow:hidden}
+  .progbar{height:100%;width:0;background:var(--found);transition:width .3s}
+  #controls{top:74px;left:12px;width:248px;padding:12px 14px;font-size:13px}
+  #controls h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:8px;cursor:pointer}
+  #controls h2 .ccol{margin-left:auto;font-size:14px}
+  #controls.collapsed h2{margin:0}
+  #controls.collapsed > :not(h2){display:none}
+  .row{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;user-select:none}
+  .row input{accent-color:var(--accent);width:15px;height:15px}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;border:1px solid rgba(0,0,0,.2)}
+  .cnt{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+  #search{margin-top:10px;width:100%;padding:7px 9px;border-radius:8px;border:1px solid #d8dee7;background:var(--panel2);color:var(--txt);font-size:13px}
+  #search::placeholder{color:#9aa6b5}
+  .sep{border-top:1px solid #e6eaf0;margin:10px 0}
+  .toggle{display:flex;align-items:center;gap:8px;cursor:pointer}
+  .toggle input{accent-color:var(--found);width:15px;height:15px}
+  .btns{display:flex;gap:8px;margin-top:10px}
+  .btn{flex:1;text-align:center;font-size:11px;padding:6px;border-radius:8px;border:1px solid #d8dee7;background:var(--panel2);color:var(--muted);cursor:pointer;text-decoration:none;display:block}
+  .btn:hover{background:#eef2f7;color:var(--txt)}
+  .hint-note{margin-top:10px;font-size:11px;color:var(--muted);line-height:1.45}
+  .leaflet-popup-content-wrapper{background:#fff;color:var(--txt);border-radius:12px}
+  .pop{min-width:200px;font-size:13px}
+  .pop .id{font-size:16px;font-weight:700;margin-bottom:2px}
+  .pop .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;margin-bottom:8px}
+  .pop .pts{font-weight:600}
+  .pop .hint{color:var(--muted);font-style:italic;margin:6px 0}
+  .pop a{color:var(--accent);text-decoration:none;display:inline-block;margin-top:6px;margin-right:12px;font-size:12px}
+  .pop a:hover{text-decoration:underline}
+  .flashbox{display:flex;align-items:center;gap:8px;margin-top:10px;padding:7px 9px;border:1px solid #d8dee7;border-radius:8px;background:var(--panel2);cursor:pointer;font-weight:600}
+  .flashbox input{accent-color:var(--found);width:17px;height:17px}
+  .flashbox.on{background:#e9f8ef;border-color:#bfe8cd;color:var(--found)}
+  .routebtn{margin-top:8px;width:100%;padding:8px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font-weight:600;font-size:12.5px;cursor:pointer}
+  .routebtn.on{background:#fff;color:var(--accent)}
+  .marker-pin{width:15px;height:15px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.35);position:relative}
+  .marker-pin.found{filter:grayscale(1);opacity:.55}
+  .marker-pin.found::after{content:"\2713";position:absolute;inset:-2px;color:#fff;font-size:11px;font-weight:900;text-align:center;line-height:15px;text-shadow:0 0 2px rgba(0,0,0,.6)}
+  .route-num{background:var(--accent);color:#fff;border:2px solid #fff;border-radius:50%;width:22px;height:22px;line-height:18px;text-align:center;font-size:12px;font-weight:700;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+  /* Panneau itinéraire */
+  #routepanel{top:74px;right:12px;width:236px;padding:10px 12px;font-size:13px;max-height:calc(100vh - 92px);display:flex;flex-direction:column}
+  #routehead{display:flex;align-items:center;gap:8px;cursor:pointer}
+  #routehead .rt{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent)}
+  #routehead .rsum{margin-left:auto;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  #routehead .rcol{color:var(--muted);font-size:14px;width:14px;text-align:center}
+  #routelist{list-style:none;margin:8px 0 0;padding:0;overflow:auto;max-height:42vh}
+  .ritem{display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:7px;cursor:pointer}
+  .ritem:hover{background:var(--panel2)}
+  .ritem .rnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:19px}
+  .ritem .rid{font-weight:600;font-variant-numeric:tabular-nums}
+  .ritem .rx{margin-left:auto;color:#b3bdca;font-weight:700;padding:0 4px}
+  .ritem .rx:hover{color:var(--dest,#d23b30)}
+  #r-warn{margin-top:8px;font-size:11px;color:#b26a00;background:#fff6e6;border:1px solid #ffe3ad;border-radius:7px;padding:6px 8px;display:none}
+  #routepanel.collapsed #routelist,#routepanel.collapsed .btns,#routepanel.collapsed #r-warn{display:none}
+  .credit{position:absolute;bottom:4px;right:8px;z-index:1000;font-size:10px;color:var(--muted);background:rgba(255,255,255,.75);padding:2px 6px;border-radius:6px}
+  .credit a{color:var(--muted)}
+  @media(max-width:640px){
+    #controls{top:auto;bottom:12px;left:12px;right:12px;width:auto}
+    #header h1{font-size:14px}
+    #routepanel{top:78px;left:12px;right:12px;width:auto;max-height:44vh}
+    #routelist{max-height:28vh}
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="header" class="panel">
+  <h1>👾 Space Invaders de <span>Londres</span></h1>
+  <div class="stat"><b id="s-total">0</b> mosaïques</div>
+  <div class="stat found"><b id="s-found">0</b> trouvés</div>
+  <div class="stat"><b id="s-left">0</b> restants</div>
+  <div class="stat"><b id="s-pts">0</b> pts trouvés</div>
+  <div class="progwrap"><div class="progbar" id="prog"></div></div>
+</div>
+<div id="controls" class="panel">
+  <h2 id="controls-head">Filtres par statut <span class="ccol" id="c-collapse">▾</span></h2>
+  <div id="filters"></div>
+  <input id="search" placeholder="Chercher un code (ex : LDN_01)"/>
+  <div class="sep"></div>
+  <label class="toggle"><input type="checkbox" id="hidefound"> Masquer les trouvés</label>
+  <div class="btns">
+    <div class="btn" id="export">⬇️ Sauvegarder</div>
+    <label class="btn" for="importfile">⬆️ Restaurer</label>
+    <input type="file" id="importfile" accept=".json" style="display:none">
+    <div class="btn" id="reset">♻️ Reset</div>
+  </div>
+  <div class="hint-note">Coche « Je l'ai flashé » dans la bulle d'un invader, ou « ➕ Ajouter à l'itinéraire » pour bâtir un parcours.</div>
+</div>
+<div id="routepanel" class="panel">
+  <div id="routehead">
+    <span class="rt">🚶 Itinéraire</span>
+    <span class="rsum"><b id="r-count">0</b> arrêts · <span id="r-dist">0</span></span>
+    <span class="rcol" id="r-collapse">▾</span>
+  </div>
+  <ol id="routelist"></ol>
+  <div id="r-warn">Google Maps accepte ~10 arrêts : seuls les 10 premiers de l'ordre optimisé seront inclus dans le lien.</div>
+  <div class="btns">
+    <a class="btn" id="r-gmaps" href="#" target="_blank" rel="noopener" style="background:var(--accent);color:#fff;border-color:var(--accent)">🗺️ Google Maps</a>
+    <div class="btn" id="r-clear">🧹 Vider</div>
+  </div>
+</div>
+<div class="credit">Données : <a href="https://github.com/goguelnikov/SpaceInvaders" target="_blank">SpaceInvaders DB</a> · <a href="https://www.invader-spotter.art/" target="_blank">Invader-Spotter</a></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+const DATA = [{"id": "LDN_01", "lat": 51.5242413275, "lng": -0.2139672159, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_02", "lat": 51.5207983929, "lng": -0.208931709, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_03", "lat": 51.5153722032, "lng": -0.202863948, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_04", "lat": 51.5113394558, "lng": -0.1974776774, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_05", "lat": 51.5139928159, "lng": -0.1317328342, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_06", "lat": 51.513327407, "lng": -0.1328935986, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_07", "lat": 51.5150878061, "lng": -0.132889169, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_08", "lat": 51.5137331624, "lng": -0.1252801657, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_09", "lat": 51.5133918107, "lng": -0.1242500582, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_10", "lat": 51.5099648509, "lng": -0.1352434067, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_11", "lat": 51.5085481319, "lng": -0.1419229204, "status": "damaged", "points": 20, "hint": ""}, {"id": "LDN_12", "lat": 51.5093858932, "lng": -0.1433314152, "status": "a little damaged", "points": 10, "hint": ""}, {"id": "LDN_13", "lat": 51.5100373548, "lng": -0.1399124563, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_14", "lat": 51.5101849948, "lng": -0.1341123325, "status": "hidden", "points": 10, "hint": ""}, {"id": "LDN_15", "lat": 51.5096356903, "lng": -0.1360702038, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_16", "lat": 51.5073701256, "lng": -0.1326228897, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_17", "lat": 51.5377893843, "lng": -0.184922605, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_18", "lat": 51.5378825684, "lng": -0.1847647127, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_19", "lat": 51.5147864771, "lng": -0.1512816229, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_20", "lat": 51.5169585355, "lng": -0.1513986826, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_21", "lat": 51.5230584205, "lng": -0.2069464172, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_22", "lat": 51.5274144923, "lng": -0.0822519605, "status": "damaged", "points": 30, "hint": ""}, {"id": "LDN_23", "lat": 51.5273565338, "lng": -0.080699793, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_24", "lat": 51.5215568291, "lng": -0.071920852, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_25", "lat": 51.5211702054, "lng": -0.0718801236, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_26", "lat": 51.5268736137, "lng": -0.0878567404, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_27", "lat": 51.5298079442, "lng": -0.2202622302, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_28", "lat": 51.5304136498, "lng": -0.2202741625, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_29", "lat": 51.515534482, "lng": -0.1392906438, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_30", "lat": 51.5128046895, "lng": -0.1383951385, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_31", "lat": 51.513620467, "lng": -0.1388166125, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_32", "lat": 51.5132396764, "lng": -0.1371794469, "status": "damaged", "points": 20, "hint": ""}, {"id": "LDN_33", "lat": 51.5123997479, "lng": -0.1328915754, "status": "a little damaged", "points": 10, "hint": ""}, {"id": "LDN_34", "lat": 51.5135529053, "lng": -0.1284080194, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_35", "lat": 51.5126309527, "lng": -0.1236093177, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_36", "lat": 51.5137403298, "lng": -0.1270247715, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_37", "lat": 51.5145320164, "lng": -0.1265173591, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_38", "lat": 51.5140730363, "lng": -0.1244375701, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_39", "lat": 51.5137062013, "lng": -0.1249330966, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_40", "lat": 51.5129920133, "lng": -0.1248931825, "status": "destroyed", "points": 0, "hint": ""}, {"id": "LDN_41", "lat": 51.51203898, "lng": -0.1254003304, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_42", "lat": 51.4625729453, "lng": -0.1127944323, "status": "a little damaged", "points": 10, "hint": ""}, {"id": "LDN_43", "lat": 51.5287928685, "lng": -0.2190816416, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_44", "lat": 51.5118752036, "lng": -0.1281659431, "status": "very damaged", "points": 10, "hint": ""}, {"id": "LDN_45", "lat": 51.5265685022, "lng": -0.2153043633, "status": "damaged", "points": 10, "hint": ""}, {"id": "LDN_46", "lat": 51.5223998911, "lng": -0.2076294347, "status": "a little damaged", "points": 10, "hint": ""}, {"id": "LDN_47", "lat": 51.5168700988, "lng": -0.2053517718, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_48", "lat": 51.5149522658, "lng": -0.2053174467, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_49", "lat": 51.5024051866, "lng": -0.1874744704, "status": "damaged", "points": 10, "hint": ""}, {"id": "LDN_50", "lat": 51.5182667542, "lng": -0.1307078668, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_51", "lat": 51.523179967, "lng": -0.1021518108, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_52", "lat": 51.5142662065, "lng": -0.1992281871, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_53", "lat": 51.5138486472, "lng": -0.2035155695, "status": "a little damaged", "points": 10, "hint": ""}, {"id": "LDN_54", "lat": 51.5222250067, "lng": -0.1322319867, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_55", "lat": 51.5142854209, "lng": -0.1342464711, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_56", "lat": 51.5209274318, "lng": -0.0730675805, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_57", "lat": 51.5224519806, "lng": -0.0717817411, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_58", "lat": 51.5006866888, "lng": -0.1200983069, "status": "damaged", "points": 10, "hint": ""}, {"id": "LDN_59", "lat": 51.5023996128, "lng": -0.1197879778, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_60", "lat": 51.5062034957, "lng": -0.1009402036, "status": "destroyed", "points": 50, "hint": ""}, {"id": "LDN_61", "lat": 51.5174629214, "lng": -0.1311499622, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_62", "lat": 51.5151417371, "lng": -0.1286663043, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_63", "lat": 51.5157257727, "lng": -0.129845915, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_64", "lat": 51.5145493595, "lng": -0.1312412089, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_65", "lat": 51.4919562204, "lng": -0.1197900939, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_66", "lat": 51.5019967609, "lng": -0.1157708692, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_67", "lat": 51.5146613135, "lng": -0.1310801848, "status": "a little damaged", "points": 30, "hint": ""}, {"id": "LDN_68", "lat": 51.5184772773, "lng": -0.1052795278, "status": "a little damaged", "points": 10, "hint": ""}, {"id": "LDN_69", "lat": 51.5199320481, "lng": -0.102065793, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_70", "lat": 51.5205162363, "lng": -0.0986283345, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_71", "lat": 51.5148606879, "lng": -0.1335314089, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_72", "lat": 51.5101321759, "lng": -0.1281164808, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_73", "lat": 51.5167029505, "lng": -0.1324966093, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_74", "lat": 51.5245304498, "lng": -0.0789169205, "status": "destroyed", "points": 50, "hint": ""}, {"id": "LDN_75", "lat": 51.5245428704, "lng": -0.0864481581, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_76", "lat": 51.5260311129, "lng": -0.0802548867, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_77", "lat": 51.5262695253, "lng": -0.0836031915, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_78", "lat": 51.5257995707, "lng": -0.0805602714, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_79", "lat": 51.5221176368, "lng": -0.1067346022, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_80", "lat": 51.5224238658, "lng": -0.1060549614, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_81", "lat": 51.520045357, "lng": -0.1001659539, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_82", "lat": 51.5072740952, "lng": -0.0961919534, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_83", "lat": 51.5052054005, "lng": -0.0920201157, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_84", "lat": 51.5026027622, "lng": -0.1085768097, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_85", "lat": 51.5069687313, "lng": -0.1038390675, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_86", "lat": 51.5271914966, "lng": -0.0788578737, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_87", "lat": 51.5260183059, "lng": -0.0869588545, "status": "a little damaged", "points": 20, "hint": ""}, {"id": "LDN_88", "lat": 51.5303087276, "lng": -0.1206215032, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_89", "lat": 51.5178922222, "lng": -0.1203957593, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_90", "lat": 51.5163505236, "lng": -0.130340051, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_91", "lat": 51.5147750256, "lng": -0.1370560683, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_92", "lat": 51.5149833226, "lng": -0.136517399, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_93", "lat": 51.507348449, "lng": -0.0928532748, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_94", "lat": 51.5058536168, "lng": -0.0889428033, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_95", "lat": 51.509035645, "lng": -0.1967417387, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_96", "lat": 51.5144247888, "lng": -0.1347383314, "status": "damaged", "points": 30, "hint": ""}, {"id": "LDN_97", "lat": 51.5262968026, "lng": -0.0791194211, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_98", "lat": 51.5142072532, "lng": -0.0837637295, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_99", "lat": 51.5181544377, "lng": -0.0796542713, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_100", "lat": 51.5376159204, "lng": -0.0610146804, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_101", "lat": 51.5217666462, "lng": -0.0780716719, "status": "destroyed", "points": 50, "hint": ""}, {"id": "LDN_102", "lat": 51.5261928841, "lng": -0.0804459918, "status": "OK", "points": 10, "hint": ""}, {"id": "LDN_103", "lat": 51.516257649, "lng": -0.1245481162, "status": "destroyed", "points": 10, "hint": ""}, {"id": "LDN_104", "lat": 51.5148987305, "lng": -0.1223690894, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_105", "lat": 51.5301288319, "lng": -0.1231361257, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_106", "lat": 51.5287001247, "lng": -0.077330821, "status": "OK", "points": 50, "hint": ""}, {"id": "LDN_107", "lat": 51.5267249711, "lng": -0.0834825265, "status": "destroyed", "points": 0, "hint": ""}, {"id": "LDN_108", "lat": 51.5261532749, "lng": -0.083556999, "status": "destroyed", "points": 50, "hint": ""}, {"id": "LDN_109", "lat": 51.5178279016, "lng": -0.1346088301, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_110", "lat": 51.5165653114, "lng": -0.1255620553, "status": "a little damaged", "points": 50, "hint": ""}, {"id": "LDN_111", "lat": 51.527980818, "lng": -0.0783705094, "status": "damaged", "points": 30, "hint": ""}, {"id": "LDN_112", "lat": 51.5266493798, "lng": -0.0820638121, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_113", "lat": 51.5167439129, "lng": -0.1295921246, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_114", "lat": 51.5159343554, "lng": -0.1288395907, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_115", "lat": 51.5265980275, "lng": -0.0812230962, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_116", "lat": 51.5231929454, "lng": -0.0990982044, "status": "very damaged", "points": 20, "hint": ""}, {"id": "LDN_117", "lat": 51.5236838408, "lng": -0.0637437353, "status": "destroyed", "points": 0, "hint": ""}, {"id": "LDN_118", "lat": 51.5260499115, "lng": -0.0879685758, "status": "destroyed", "points": 0, "hint": ""}, {"id": "LDN_119", "lat": 51.5211358405, "lng": -0.0737798896, "status": "OK", "points": 50, "hint": ""}, {"id": "LDN_120", "lat": 51.52191706, "lng": -0.1090067229, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_121", "lat": 51.5272646948, "lng": -0.0817225573, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_122", "lat": 51.5167757943, "lng": -0.1334136078, "status": "destroyed", "points": 50, "hint": ""}, {"id": "LDN_123", "lat": 51.4618877529, "lng": -0.1119854366, "status": "destroyed", "points": 50, "hint": ""}, {"id": "LDN_124", "lat": 51.462499409, "lng": -0.1148529313, "status": "destroyed", "points": 0, "hint": ""}, {"id": "LDN_125", "lat": 51.463469862, "lng": -0.1146922166, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_126", "lat": 51.4929539304, "lng": -0.1204222938, "status": "OK", "points": 50, "hint": ""}, {"id": "LDN_127", "lat": 51.5296328064, "lng": -0.0976675443, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_128", "lat": 51.5128723097, "lng": -0.0393749486, "status": "destroyed", "points": 20, "hint": ""}, {"id": "LDN_129", "lat": 51.5121704327, "lng": -0.1033994323, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_130", "lat": 51.5069897082, "lng": -0.103828799, "status": "very damaged", "points": 20, "hint": ""}, {"id": "LDN_131", "lat": 51.4887757017, "lng": -0.1107289247, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_132", "lat": 51.52376442, "lng": -0.0802524515, "status": "destroyed", "points": 100, "hint": ""}, {"id": "LDN_133", "lat": 51.4926085251, "lng": -0.1011189802, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_134", "lat": 51.4950836859, "lng": -0.0985768964, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_135", "lat": 51.5497479924, "lng": -0.0750352161, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_136", "lat": 51.5470123375, "lng": -0.0549581781, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_137", "lat": 51.5271307949, "lng": -0.0784775462, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_138", "lat": 51.5232942355, "lng": -0.0788632839, "status": "OK", "points": 20, "hint": ""}, {"id": "LDN_139", "lat": 51.540371721, "lng": -0.1433104195, "status": "OK", "points": 100, "hint": ""}, {"id": "LDN_140", "lat": 51.5177447233, "lng": -0.0967843018, "status": "hidden", "points": 30, "hint": ""}, {"id": "LDN_141", "lat": 51.5176075219, "lng": -0.0967642018, "status": "hidden", "points": 30, "hint": ""}, {"id": "LDN_142", "lat": 51.5660179313, "lng": -0.1075585246, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_143", "lat": 51.5114652393, "lng": -0.1302544373, "status": "OK", "points": 40, "hint": ""}, {"id": "LDN_144", "lat": 51.5066664104, "lng": -0.1151044606, "status": "OK", "points": 50, "hint": ""}, {"id": "LDN_145", "lat": 51.5529218816, "lng": -0.1128898531, "status": "OK", "points": 40, "hint": ""}, {"id": "LDN_146", "lat": 51.5526881056, "lng": -0.1121180859, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_147", "lat": 51.5207982168, "lng": -0.0747067956, "status": "destroyed", "points": 30, "hint": ""}, {"id": "LDN_148", "lat": 51.5704163722, "lng": -0.0245585089, "status": "OK", "points": 30, "hint": ""}, {"id": "LDN_149", "lat": 51.5902195346, "lng": -0.0169132311, "status": "OK", "points": 100, "hint": ""}, {"id": "LDN_150", "lat": 51.531000693, "lng": -0.0861376666, "status": "damaged", "points": 20, "hint": ""}, {"id": "LDN_151", "lat": 51.5125631187, "lng": -0.1368283004, "status": "OK", "points": 30, "hint": "Bridle Lane"}, {"id": "LDN_152", "lat": 51.5124345431, "lng": -0.1371086682, "status": "OK", "points": 30, "hint": "Bob Bob Ricard"}, {"id": "LDN_153", "lat": 51.5194262908, "lng": -0.1358959667, "status": "OK", "points": 30, "hint": "ICCO - \"The People's Pizzeria\""}, {"id": "LDN_154", "lat": 51.4888557537, "lng": -0.165524023, "status": "OK", "points": 20, "hint": "Waterstones"}, {"id": "LDN_155", "lat": 51.4832352423, "lng": -0.1773648403, "status": "OK", "points": 50, "hint": "Vivienne Westwood Worlds End"}, {"id": "LDN_156", "lat": 51.490157671, "lng": -0.1625217873, "status": "destroyed", "points": 40, "hint": ""}, {"id": "LDN_157", "lat": 51.4936403065, "lng": -0.1171229238, "status": "OK", "points": 20, "hint": "Newport Street Gallery Twin 1"}, {"id": "LDN_158", "lat": 51.4936225883, "lng": -0.1169913972, "status": "OK", "points": 20, "hint": "Newport Street Gallery Twin 2"}, {"id": "LDN_159", "lat": 51.5129775447, "lng": -0.1363082297, "status": "OK", "points": 50, "hint": "Aesop"}, {"id": "LDN_160", "lat": 51.5140507903, "lng": -0.1244930017, "status": "OK", "points": 30, "hint": "47 Shelton St"}, {"id": "LDN_161", "lat": 51.5129208463, "lng": -0.1272003796, "status": "OK", "points": 20, "hint": "The Ordinary. DECIEM The Abnormal Beauty Company"}, {"id": "LDN_162", "lat": 51.5119746123, "lng": -0.1352203959, "status": "OK", "points": 30, "hint": "6-10 Lexington St"}];
+const CITY = "LDN";
+const STORE = "flashed_"+CITY;
+const RSTORE = "route_"+CITY;
+const COLORS={"OK":"#1fa463","a little damaged":"#cf9f0a","damaged":"#e08a16","very damaged":"#d2691e","destroyed":"#d23b30","hidden":"#6b7a8d"};
+const LABELS={"OK":"Visible","a little damaged":"Légèrement endommagé","damaged":"Endommagé","very damaged":"Très endommagé","destroyed":"Détruit / disparu","hidden":"Caché"};
+const ORDER=["OK","a little damaged","damaged","very damaged","destroyed","hidden"];
+const FLASHABLE=s=>s!=="destroyed"&&s!=="hidden";
+const BYID={}; DATA.forEach(d=>BYID[d.id]=d);
+
+let flashed = new Set();
+try{flashed = new Set(JSON.parse(localStorage.getItem(STORE)||"[]"));}catch(e){}
+function save(){try{localStorage.setItem(STORE,JSON.stringify([...flashed]));}catch(e){}}
+
+let route = [];
+try{route = JSON.parse(localStorage.getItem(RSTORE)||"[]").filter(id=>BYID[id]);}catch(e){}
+function saveRoute(){try{localStorage.setItem(RSTORE,JSON.stringify(route));}catch(e){}}
+
+const map=L.map('map',{zoomControl:true}).setView([51.5074,-0.1278],12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:20,subdomains:'abcd'}).addTo(map);
+
+const cluster=L.markerClusterGroup({maxClusterRadius:50,spiderfyOnMaxZoom:true,chunkedLoading:true});
+const routeLayer=L.layerGroup();
+const markers=[];
+
+function pinHtml(d){const c=COLORS[d.status]||'#888';return `<div class="marker-pin ${flashed.has(d.id)?'found':''}" style="background:${c}"></div>`;}
+function setIcon(m){m.setIcon(L.divIcon({className:'',html:pinHtml(m._inv),iconSize:[15,15],iconAnchor:[7,7]}));}
+
+function popupHtml(d){
+  const c=COLORS[d.status]||'#888';
+  const pin=`https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lng}`;
+  const sv=`https://www.google.com/maps?q=&layer=c&cbll=${d.lat},${d.lng}`;
+  const img=`https://www.google.com/search?tbm=isch&q=${encodeURIComponent('Invader '+d.id)}`;
+  const on=flashed.has(d.id);
+  const inr=route.includes(d.id);
+  return `<div class="pop">
+    <div class="id">${d.id}</div>
+    <span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}66">${LABELS[d.status]||d.status}</span>
+    <div class="pts">${d.points!=null?d.points+' points':'points n.c.'}</div>
+    ${d.hint?`<div class="hint">“${d.hint}”</div>`:''}
+    <a href="${pin}" target="_blank">📍 Voir sur Maps</a>
+    <a href="${img}" target="_blank">🖼️ Photo</a>
+    <a href="${sv}" target="_blank">📷 Street View</a>
+    <label class="flashbox ${on?'on':''}"><input type="checkbox" ${on?'checked':''} onchange="toggleFlash('${d.id}',this.checked)"> ${on?'Flashé ✓':"Je l'ai flashé"}</label>
+    <button class="routebtn ${inr?'on':''}" onclick="toggleRoute('${d.id}')">${inr?"✓ Dans l'itinéraire — retirer":"➕ Ajouter à l'itinéraire"}</button>
+  </div>`;
+}
+
+function refreshPopup(id){const m=markers.find(x=>x._inv.id===id);if(m&&m.isPopupOpen())m.setPopupContent(popupHtml(m._inv));}
+
+window.toggleFlash=function(id,val){
+  if(val)flashed.add(id);else flashed.delete(id);
+  save();
+  const m=markers.find(x=>x._inv.id===id); if(m)setIcon(m);
+  updateStats();
+  if(document.getElementById('hidefound').checked)refresh();
+  refreshPopup(id);
+};
+
+window.toggleRoute=function(id){
+  const i=route.indexOf(id);
+  if(i>=0)route.splice(i,1);else route.push(id);
+  saveRoute();renderRoute();refreshPopup(id);
+};
+window.removeRoute=function(id){
+  const i=route.indexOf(id);
+  if(i>=0){route.splice(i,1);saveRoute();renderRoute();refreshPopup(id);}
+};
+
+DATA.forEach(d=>{
+  const m=L.marker([d.lat,d.lng]);
+  m._inv=d; setIcon(m);
+  m.bindPopup(()=>popupHtml(d));
+  m.bindTooltip(d.id,{direction:'top',offset:[0,-8]});
+  markers.push(m);
+});
+
+const counts={};
+DATA.forEach(d=>counts[d.status]=(counts[d.status]||0)+1);
+const fc=document.getElementById('filters');
+ORDER.filter(s=>counts[s]).forEach(s=>{
+  const lab=document.createElement('label');lab.className='row';
+  lab.innerHTML=`<input type="checkbox" data-st="${s}" checked><span class="dot" style="background:${COLORS[s]}"></span>${LABELS[s]}<span class="cnt">${counts[s]}</span>`;
+  fc.appendChild(lab);
+});
+
+function refresh(){
+  const active={};
+  document.querySelectorAll('#filters input[data-st]').forEach(cb=>active[cb.dataset.st]=cb.checked);
+  const q=(document.getElementById('search').value||'').trim().toUpperCase();
+  const hf=document.getElementById('hidefound').checked;
+  cluster.clearLayers();
+  const sel=[];
+  markers.forEach(m=>{const d=m._inv;
+    if(active[d.status]===false)return;
+    if(q&&!d.id.toUpperCase().includes(q))return;
+    if(hf&&flashed.has(d.id))return;
+    sel.push(m);});
+  cluster.addLayers(sel);
+}
+
+function updateStats(){
+  const flashableTotal=DATA.filter(d=>FLASHABLE(d.status)).length;
+  let foundCount=0,foundPts=0;
+  DATA.forEach(d=>{if(flashed.has(d.id)){foundCount++;foundPts+=d.points||0;}});
+  const left=Math.max(0,flashableTotal-DATA.filter(d=>FLASHABLE(d.status)&&flashed.has(d.id)).length);
+  document.getElementById('s-total').textContent=DATA.length;
+  document.getElementById('s-found').textContent=foundCount;
+  document.getElementById('s-left').textContent=left;
+  document.getElementById('s-pts').textContent=foundPts.toLocaleString('fr-FR');
+  document.getElementById('prog').style.width=(flashableTotal?100*(flashableTotal-left)/flashableTotal:0)+'%';
+}
+
+/* ---------- Itinéraire ---------- */
+function hav(a,b){
+  const R=6371000,t=Math.PI/180;
+  const dLat=(b.lat-a.lat)*t,dLng=(b.lng-a.lng)*t,la1=a.lat*t,la2=b.lat*t;
+  const x=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+function pathLen(o){let s=0;for(let i=0;i<o.length-1;i++)s+=hav(o[i],o[i+1]);return s;}
+function nearestNeighbor(pts,start){
+  const n=pts.length,used=new Array(n).fill(false),o=[];
+  let cur=start;used[cur]=true;o.push(pts[cur]);
+  for(let k=1;k<n;k++){let best=-1,bd=Infinity;
+    for(let j=0;j<n;j++)if(!used[j]){const d=hav(pts[cur],pts[j]);if(d<bd){bd=d;best=j;}}
+    used[best]=true;o.push(pts[best]);cur=best;}
+  return o;
+}
+function twoOpt(o){
+  let improved=true,len=pathLen(o);
+  while(improved){improved=false;
+    for(let i=0;i<o.length-1;i++)for(let k=i+1;k<o.length;k++){
+      const cand=o.slice(0,i).concat(o.slice(i,k+1).reverse(),o.slice(k+1));
+      const cl=pathLen(cand);
+      if(cl+1e-6<len){o=cand;len=cl;improved=true;}
+    }}
+  return o;
+}
+function optimize(pts){
+  const n=pts.length;
+  if(n<=2)return pts.slice();
+  let best=null,bd=Infinity;
+  const starts=n<=10?pts.map((_,i)=>i):[0];
+  for(const s of starts){
+    let o=nearestNeighbor(pts,s);
+    if(n<=40)o=twoOpt(o);
+    const d=pathLen(o);
+    if(d<bd){bd=d;best=o;}
+  }
+  return best;
+}
+function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(1).replace('.',',')+' km';}
+function gmapsUrl(o){
+  const stops=o.slice(0,10).map(d=>d.lat+','+d.lng);
+  const dest=encodeURIComponent(stops[stops.length-1]);
+  const wpts=stops.slice(0,-1).map(encodeURIComponent).join('%7C');
+  let u='https://www.google.com/maps/dir/?api=1&travelmode=walking&destination='+dest;
+  if(wpts)u+='&waypoints='+wpts;
+  return u;
+}
+function focusInvader(id){
+  const m=markers.find(x=>x._inv.id===id);if(!m)return;
+  if(cluster.zoomToShowLayer)cluster.zoomToShowLayer(m,()=>m.openPopup());
+  else{map.setView([BYID[id].lat,BYID[id].lng],17);m.openPopup();}
+}
+function renderRoute(){
+  const panel=document.getElementById('routepanel');
+  routeLayer.clearLayers();
+  if(route.length===0){panel.style.display='none';return;}
+  panel.style.display='';
+  const pts=route.map(id=>BYID[id]).filter(Boolean);
+  const ordered=optimize(pts);
+  const ol=document.getElementById('routelist');ol.innerHTML='';
+  ordered.forEach((d,i)=>{
+    const li=document.createElement('li');li.className='ritem';
+    li.innerHTML=`<span class="rnum">${i+1}</span><span class="dot" style="background:${COLORS[d.status]||'#888'}"></span><span class="rid">${d.id}</span><span class="rx" title="Retirer">✕</span>`;
+    li.addEventListener('click',()=>focusInvader(d.id));
+    li.querySelector('.rx').addEventListener('click',e=>{e.stopPropagation();removeRoute(d.id);});
+    ol.appendChild(li);
+  });
+  document.getElementById('r-count').textContent=route.length;
+  document.getElementById('r-dist').textContent='~'+fmtDist(pathLen(ordered));
+  document.getElementById('r-warn').style.display=route.length>10?'block':'none';
+  document.getElementById('r-gmaps').href=gmapsUrl(ordered);
+  if(ordered.length>=2)
+    L.polyline(ordered.map(d=>[d.lat,d.lng]),{color:'#3358d4',weight:4,opacity:.75,dashArray:'1,9',lineCap:'round'}).addTo(routeLayer);
+  ordered.forEach((d,i)=>{
+    L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="route-num">${i+1}</div>`,iconSize:[22,22],iconAnchor:[11,11]}),zIndexOffset:1000,interactive:false}).addTo(routeLayer);
+  });
+}
+
+document.querySelectorAll('#filters input[data-st]').forEach(cb=>cb.addEventListener('change',refresh));
+document.getElementById('search').addEventListener('input',refresh);
+document.getElementById('hidefound').addEventListener('change',refresh);
+document.getElementById('reset').addEventListener('click',()=>{
+  if(confirm('Effacer tous les invaders cochés ?')){flashed=new Set();save();markers.forEach(setIcon);updateStats();refresh();}
+});
+document.getElementById('export').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify([...flashed])],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='invaders-flashes-'+CITY+'.json';a.click();
+});
+document.getElementById('importfile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{flashed=new Set(JSON.parse(r.result));save();markers.forEach(setIcon);updateStats();refresh();alert('Restauré : '+flashed.size+' invaders.');}catch(x){alert('Fichier invalide.');}};
+  r.readAsText(f);
+});
+document.getElementById('r-clear').addEventListener('click',()=>{route=[];saveRoute();renderRoute();markers.forEach(m=>refreshPopup(m._inv.id));});
+document.getElementById('routehead').addEventListener('click',()=>{
+  const p=document.getElementById('routepanel');p.classList.toggle('collapsed');
+  document.getElementById('r-collapse').textContent=p.classList.contains('collapsed')?'▸':'▾';
+});
+document.getElementById('controls-head').addEventListener('click',()=>{
+  const p=document.getElementById('controls');p.classList.toggle('collapsed');
+  document.getElementById('c-collapse').textContent=p.classList.contains('collapsed')?'▸':'▾';
+});
+if(window.matchMedia('(max-width:640px)').matches){
+  document.getElementById('controls').classList.add('collapsed');
+  document.getElementById('c-collapse').textContent='▸';
+}
+
+map.addLayer(cluster);
+routeLayer.addTo(map);
+updateStats();refresh();renderRoute();
+map.fitBounds(L.featureGroup(markers).getBounds().pad(0.03));
+</script>
+</body>
+</html>
