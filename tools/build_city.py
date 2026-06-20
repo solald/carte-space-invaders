@@ -1,14 +1,34 @@
-<!DOCTYPE html>
+import json, sys, os
+city_code, title, region, out_name, center = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+clat, clng = center.split(',')
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+data = json.load(open(os.path.join(HERE, 'world_invaders.json'), encoding='utf-8-sig'))
+def f(x):
+    x=(x or '').strip().replace(',','.')
+    return float(x) if x not in ('','None') else None
+rows=[]
+for d in data:
+    if d['city']!=city_code: continue
+    rows.append({'id':d['id'],'lat':f(d.get('lat')),'lng':f(d.get('lng')),
+        'status':(d.get('status') or '').strip(),
+        'points':int(d['points']) if str(d.get('points','')).strip().isdigit() else None,
+        'hint':(d.get('hint') or '').strip()})
+rows=[r for r in rows if r['lat'] is not None and r['lng'] is not None]
+rows.sort(key=lambda d:(len(d['id']),d['id']))
+js=json.dumps(rows,ensure_ascii=False)
+
+html = r'''<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Space Invaders de Marseille — carte interactive</title>
+<title>Space Invaders de __TITLE__ — carte interactive</title>
 <link rel="icon" type="image/svg+xml" href="invader.svg"/>
 <meta name="theme-color" content="#3358d4"/>
-<meta name="description" content="Carte interactive des Space Invaders de Marseille : repère, flashe et construis ton itinéraire."/>
+<meta name="description" content="Carte interactive des Space Invaders de __TITLE__ : repère, flashe et construis ton itinéraire."/>
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="👾 Space Invaders de Marseille"/>
+<meta property="og:title" content="👾 Space Invaders de __TITLE__"/>
 <meta property="og:description" content="Carte interactive : repère, flashe et construis ton itinéraire à plusieurs arrêts."/>
 <meta property="og:image" content="https://solald.github.io/carte-space-invaders/og-image.png"/>
 <meta name="twitter:card" content="summary_large_image"/>
@@ -90,7 +110,7 @@
 <body>
 <div id="map"></div>
 <div id="header" class="panel">
-  <h1>👾 Space Invaders de <span>Marseille</span></h1>
+  <h1>👾 Space Invaders de <span>__TITLE__</span></h1>
   <div class="stat"><b id="s-total">0</b> mosaïques</div>
   <div class="stat found"><b id="s-found">0</b> trouvés</div>
   <div class="stat"><b id="s-left">0</b> restants</div>
@@ -100,7 +120,7 @@
 <div id="controls" class="panel">
   <h2>Filtres par statut</h2>
   <div id="filters"></div>
-  <input id="search" placeholder="Chercher un code (ex : MARS_01)"/>
+  <input id="search" placeholder="Chercher un code (ex : __EXAMPLE__)"/>
   <div class="sep"></div>
   <label class="toggle"><input type="checkbox" id="hidefound"> Masquer les trouvés</label>
   <div class="btns">
@@ -129,8 +149,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
-const DATA = [{"id": "MARS_01", "lat": 43.3037849367, "lng": 5.3802496726, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_02", "lat": 43.2919766667, "lng": 5.3728435277, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_03", "lat": 43.29306334, "lng": 5.3719324748, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_04", "lat": 43.2945775318, "lng": 5.3820246213, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_05", "lat": 43.2941033408, "lng": 5.383425876, "status": "destroyed", "points": 10, "hint": ""}, {"id": "MARS_06", "lat": 43.2926827221, "lng": 5.3840118204, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_07", "lat": 43.2956534461, "lng": 5.3821528736, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_08", "lat": 43.2999570418, "lng": 5.3681461219, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_09", "lat": 43.2977897144, "lng": 5.3675410787, "status": "destroyed", "points": 10, "hint": ""}, {"id": "MARS_10", "lat": 43.303846922, "lng": 5.3775505962, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_11", "lat": 43.3006135852, "lng": 5.3804357589, "status": "OK", "points": 10, "hint": ""}, {"id": "MARS_12", "lat": 43.2973105623, "lng": 5.3656088824, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_13", "lat": 43.3008101856, "lng": 5.3824227386, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_14", "lat": 43.2968722288, "lng": 5.4052820985, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_15", "lat": 43.3606295733, "lng": 5.3147533468, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_16", "lat": 43.3613126882, "lng": 5.3140507112, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_17", "lat": 43.361131601, "lng": 5.3127510121, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_18", "lat": 43.3608963358, "lng": 5.3108079271, "status": "destroyed", "points": 30, "hint": ""}, {"id": "MARS_19", "lat": 43.3479551288, "lng": 5.3623927568, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_20", "lat": 43.3200940461, "lng": 5.3728246293, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_21", "lat": 43.3262701467, "lng": 5.3605683244, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_22", "lat": 43.2262707153, "lng": 5.4164083728, "status": "damaged", "points": 40, "hint": ""}, {"id": "MARS_23", "lat": 43.2299005855, "lng": 5.4366584251, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_24", "lat": 43.3575569921, "lng": 5.4230891809, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_25", "lat": 43.3518720437, "lng": 5.438725631, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_26", "lat": 43.330583661, "lng": 5.4274773555, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_27", "lat": 43.3285936336, "lng": 5.4136899883, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_28", "lat": 43.3190135655, "lng": 5.4081884855, "status": "destroyed", "points": 20, "hint": ""}, {"id": "MARS_29", "lat": 43.3168883949, "lng": 5.4039845823, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_30", "lat": 43.2991869444, "lng": 5.3850696311, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_31", "lat": 43.2964504482, "lng": 5.3624001037, "status": "destroyed", "points": 20, "hint": ""}, {"id": "MARS_32", "lat": 43.2946318684, "lng": 5.3557285768, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_33", "lat": 43.2953051647, "lng": 5.38579855, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_34", "lat": 43.2942645302, "lng": 5.3806452684, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_35", "lat": 43.2964399517, "lng": 5.3746138065, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_36", "lat": 43.2980617268, "lng": 5.3771984874, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_37", "lat": 43.2776477072, "lng": 5.4277359427, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_38", "lat": 43.2959596752, "lng": 5.4057661495, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_39", "lat": 43.2929010919, "lng": 5.3826927283, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_40", "lat": 43.3042533722, "lng": 5.4148153332, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_41", "lat": 43.2951653296, "lng": 5.3910624772, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_42", "lat": 43.2843802314, "lng": 5.3674326466, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_43", "lat": 43.2893336113, "lng": 5.368284539, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_44", "lat": 43.2922580113, "lng": 5.3773567801, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_45", "lat": 43.2891275891, "lng": 5.3787257877, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_46", "lat": 43.30617439, "lng": 5.3659170364, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_47", "lat": 43.2986831423, "lng": 5.3664896236, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_48", "lat": 43.2947163125, "lng": 5.3844587839, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_49", "lat": 43.2126143163, "lng": 5.3536176065, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_50", "lat": 43.2176106549, "lng": 5.3459103789, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_51", "lat": 43.3032800894, "lng": 5.3650701633, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_52", "lat": 43.2992353808, "lng": 5.3690603362, "status": "destroyed", "points": 20, "hint": ""}, {"id": "MARS_53", "lat": 43.2961689228, "lng": 5.3673259209, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_54", "lat": 43.2975423109, "lng": 5.3685350388, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_55", "lat": 43.298029644, "lng": 5.3705769032, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_56", "lat": 43.2968811755, "lng": 5.3726515794, "status": "OK", "points": 100, "hint": ""}, {"id": "MARS_57", "lat": 43.2990530136, "lng": 5.3803657574, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_58", "lat": 43.2957386495, "lng": 5.3637781487, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_59", "lat": 43.2911413724, "lng": 5.3559073948, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_60", "lat": 43.2851367759, "lng": 5.3501282659, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_61", "lat": 43.2853987832, "lng": 5.3518057864, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_62", "lat": 43.2854712383, "lng": 5.3506231001, "status": "damaged", "points": 30, "hint": ""}, {"id": "MARS_63", "lat": 43.2828536295, "lng": 5.350369567, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_64", "lat": 43.282583446, "lng": 5.3489814736, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_65", "lat": 43.2799826059, "lng": 5.3516902919, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_66", "lat": 43.2800581061, "lng": 5.3519459634, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_67", "lat": 43.2854433756, "lng": 5.3835647915, "status": "destroyed", "points": 50, "hint": ""}, {"id": "MARS_68", "lat": 43.2829849218, "lng": 5.3484668802, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_69", "lat": 43.2629010642, "lng": 5.3757750644, "status": "destroyed", "points": 30, "hint": ""}, {"id": "MARS_70", "lat": 43.2472229723, "lng": 5.3739888397, "status": "destroyed", "points": 50, "hint": ""}, {"id": "MARS_71", "lat": 43.2383329873, "lng": 5.3618118657, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_72", "lat": 43.2827686217, "lng": 5.4548701356, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_73", "lat": 43.210378928, "lng": 5.4201956122, "status": "a little damaged", "points": 100, "hint": ""}, {"id": "MARS_74", "lat": 43.2503766187, "lng": 5.3898284781, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_75", "lat": 43.3019549171, "lng": 5.3802811158, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_76", "lat": 43.3023989371, "lng": 5.3830883573, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_77", "lat": 43.2973863421, "lng": 5.3812606718, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_78", "lat": 43.2911457717, "lng": 5.3830759803, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_79", "lat": 43.2948284892, "lng": 5.3747491557, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_80", "lat": 43.2836240183, "lng": 5.3990731022, "status": "destroyed", "points": 30, "hint": ""}, {"id": "MARS_81", "lat": 43.2790094964, "lng": 5.3995210847, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_82", "lat": 43.29351606, "lng": 5.382896034, "status": "OK", "points": 20, "hint": ""}, {"id": "MARS_83", "lat": 43.3258843573, "lng": 5.4094079182, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_84", "lat": 43.2691597498, "lng": 5.3884820289, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_85", "lat": 43.2815143065, "lng": 5.4046605077, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_86", "lat": 43.3037588942, "lng": 5.418690293, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_87", "lat": 43.2113615267, "lng": 5.4233937202, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_88", "lat": 43.2131056608, "lng": 5.4434029571, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_89", "lat": 43.3203312545, "lng": 5.3679776584, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_90", "lat": 43.2619422683, "lng": 5.3942619838, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_91", "lat": 43.2612006976, "lng": 5.3962229133, "status": "OK", "points": 30, "hint": ""}, {"id": "MARS_92", "lat": 43.2608750823, "lng": 5.3962586262, "status": "destroyed", "points": 30, "hint": ""}, {"id": "MARS_93", "lat": 43.2613356329, "lng": 5.3962986413, "status": "OK", "points": 40, "hint": ""}, {"id": "MARS_94", "lat": 43.2611007565, "lng": 5.3961589097, "status": "destroyed", "points": 30, "hint": ""}, {"id": "MARS_95", "lat": 43.2610705819, "lng": 5.3962757465, "status": "destroyed", "points": 30, "hint": ""}, {"id": "MARS_96", "lat": 43.2620046801, "lng": 5.3950735658, "status": "OK", "points": 50, "hint": ""}, {"id": "MARS_97", "lat": 43.2616587824, "lng": 5.3962975013, "status": "OK", "points": 40, "hint": ""}];
-const CITY = "MARS";
+const DATA = __DATA__;
+const CITY = "__CITY__";
 const STORE = "flashed_"+CITY;
 const RSTORE = "route_"+CITY;
 const COLORS={"OK":"#1fa463","a little damaged":"#cf9f0a","damaged":"#e08a16","very damaged":"#d2691e","destroyed":"#d23b30","hidden":"#6b7a8d"};
@@ -147,7 +167,7 @@ let route = [];
 try{route = JSON.parse(localStorage.getItem(RSTORE)||"[]").filter(id=>BYID[id]);}catch(e){}
 function saveRoute(){try{localStorage.setItem(RSTORE,JSON.stringify(route));}catch(e){}}
 
-const map=L.map('map',{zoomControl:true}).setView([43.2895,5.378],12);
+const map=L.map('map',{zoomControl:true}).setView([__CLAT__,__CLNG__],12);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
   attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:20,subdomains:'abcd'}).addTo(map);
 
@@ -349,4 +369,11 @@ updateStats();refresh();renderRoute();
 map.fitBounds(L.featureGroup(markers).getBounds().pad(0.03));
 </script>
 </body>
-</html>
+</html>'''
+
+example = rows[0]['id'] if rows else 'PA_100'
+html=(html.replace('__TITLE__',title).replace('__REGION__',region).replace('__CITY__',city_code)
+          .replace('__EXAMPLE__',example).replace('__CLAT__',clat).replace('__CLNG__',clng)
+          .replace('__DATA__',js))
+open(out_name,'w',encoding='utf-8').write(html)
+print('written',out_name,len(rows),'invaders',len(html),'bytes')
